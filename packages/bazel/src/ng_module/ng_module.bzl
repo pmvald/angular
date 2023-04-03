@@ -198,7 +198,15 @@ def _ngc_tsconfig(ctx, files, srcs, **kwargs):
             [ctx.workspace_name] + ctx.label.package.split("/") + [ctx.label.name, ""],
         )
 
-    tsconfig = dict(tsc_wrapped_tsconfig(ctx, files, srcs, **kwargs), **{
+    base_tsconfig = tsc_wrapped_tsconfig(ctx, srcs, srcs, **kwargs) if getattr(ctx.attr, "local_compilation_mode", False) else tsc_wrapped_tsconfig(ctx, files, srcs, **kwargs)
+
+    if getattr(ctx.attr, "local_compilation_mode", False):
+        base_tsconfig["bazelOptions"]["allowedStrictDeps"] = []
+
+        #print(">>>> srcs: ", srcs)
+        print(">>>> LSC: base_tsconfig is ", base_tsconfig)
+
+    tsconfig = dict(base_tsconfig, **{
         "angularCompilerOptions": angular_compiler_options,
     })
 
@@ -255,8 +263,10 @@ def ngc_compile_action(
 
     ngc_compilation_mode = "%s %s" % (_get_ivy_compilation_mode(ctx), target_flavor)
 
-    mnemonic = "AngularTemplateCompile"
-    progress_message = "Compiling Angular templates (%s) %s" % (
+    mnemonic = "AngularTemplateCompileLCM" if getattr(ctx.attr, "local_compilation_mode", False) else "AngularTemplateCompile"
+    progress_message_prefix = "Compiling Angular templates in LC mode" if getattr(ctx.attr, "local_compilation_mode", False) else "AngularTemplateCompile"
+    progress_message = "%s (%s) %s" % (
+        progress_message_prefix,
         ngc_compilation_mode,
         label,
     )
@@ -314,6 +324,36 @@ def _filter_ts_inputs(all_inputs):
         if f.path.endswith(".js") or f.path.endswith(".ts") or f.path.endswith(".json")
     ]
 
+def _get_short_path_without_ext(file):
+    ext = ".".join(file.basename.split(".")[1::])
+    return file.short_path[:-len(ext)]
+
+def _compile_action_lcm(
+        ctx,
+        inputs,
+        outputs,
+        tsconfig_file,
+        node_opts,
+        target_flavor):
+    groups = []
+
+    for input_file in ctx.files.srcs:
+        if input_file.short_path.endswith(".d.ts"):
+            continue
+
+        basename = _get_short_path_without_ext(input_file)
+
+        group_inputs = [input_file, tsconfig_file] + ctx.files.assets
+        group_outputs = [f for f in outputs if _get_short_path_without_ext(f) == basename]
+
+        groups.append({
+            "inputs": group_inputs,
+            "outputs": group_outputs,
+        })
+
+    for group in groups:
+        ngc_compile_action(ctx, ctx.label, group["inputs"], group["outputs"], tsconfig_file, node_opts, None, [], target_flavor)
+
 def _compile_action(
         ctx,
         inputs,
@@ -354,13 +394,22 @@ def _compile_action(
     return ngc_compile_action(ctx, ctx.label, action_inputs, outputs, tsconfig_file, node_opts, None, [], target_flavor)
 
 def _prodmode_compile_action(ctx, inputs, outputs, tsconfig_file, node_opts):
+    #if ctx.label.name == "main":
+    #print(">>>> target %s -> inputs:" % ctx.label.name, "\n".join([f.short_path for f in inputs if not f.short_path.endswith(".d.ts")]))
+
     outs = _expected_outs(ctx)
-    return _compile_action(ctx, inputs, outputs + outs.closure_js + outs.prod_perf_files + outs.declarations, tsconfig_file, node_opts, "prodmode")
+    _compile_action_helper = _compile_action
+    if getattr(ctx.attr, "local_compilation_mode", False):
+        _compile_action_helper = _compile_action_lcm
+    return _compile_action_helper(ctx, inputs, outputs + outs.closure_js + outs.prod_perf_files + outs.declarations, tsconfig_file, node_opts, "prodmode")
 
 def _devmode_compile_action(ctx, inputs, outputs, tsconfig_file, node_opts):
     outs = _expected_outs(ctx)
+    _compile_action_helper = _compile_action
+    if getattr(ctx.attr, "local_compilation_mode", False):
+        _compile_action_helper = _compile_action_lcm
     compile_action_outputs = outputs + outs.devmode_js + outs.dev_perf_files
-    _compile_action(ctx, inputs, compile_action_outputs, tsconfig_file, node_opts, "devmode")
+    _compile_action_helper(ctx, inputs, compile_action_outputs, tsconfig_file, node_opts, "devmode")
 
 # Note: We need to define `label` and `srcs_files` as `tsc_wrapped` passes
 # them and Starlark would otherwise error at runtime.
@@ -469,6 +518,7 @@ NG_MODULE_ATTRIBUTES = {
         executable = True,
         cfg = "exec",
     ),
+    "local_compilation_mode": attr.bool(default = False),
     "ng_xi18n": attr.label(
         default = Label(DEFAULT_NG_XI18N),
         executable = True,
