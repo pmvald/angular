@@ -315,6 +315,18 @@ export function compile({
     gatherDiagnostics = (program) =>
         gatherDiagnosticsForInputsOnly(compilerOpts, bazelOpts, program);
   }
+
+  if (compilerOpts.compilationMode === 'local') {
+    compilerOpts = {
+      ...compilerOpts,
+      allowNonTsExtensions: true,
+      suppressOutputPathCheck: true,
+      isolatedModules: true,
+      preserveConstEnums: true,
+      noResolve: true,
+    };
+  }
+
   const {diagnostics, emitResult, program} = ng.performCompilation({
     rootNames: files,
     options: compilerOpts,
@@ -433,7 +445,10 @@ function gatherDiagnosticsForInputsOnly(
     // Note: We only get the diagnostics for individual files
     // to e.g. not check libraries.
     diagnostics.push(...tsProgram.getSyntacticDiagnostics(sf));
-    diagnostics.push(...tsProgram.getSemanticDiagnostics(sf));
+
+    if (options.compilationMode !== 'local') {
+      diagnostics.push(...tsProgram.getSemanticDiagnostics(sf));
+    }
   }
 
   if (ngProgram instanceof ng.NgtscProgram) {
