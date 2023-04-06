@@ -37,6 +37,8 @@ def _is_partial_compilation_enabled(ctx):
 
 def _get_ivy_compilation_mode(ctx):
     """Gets the Ivy compilation mode based on the current build settings."""
+    if getattr(ctx.attr, "local_compilation_mode", False):
+        return "local"
     return "partial" if _is_partial_compilation_enabled(ctx) else "full"
 
 # Return true if run with bazel (the open-sourced version of blaze), false if
@@ -200,12 +202,6 @@ def _ngc_tsconfig(ctx, files, srcs, **kwargs):
 
     base_tsconfig = tsc_wrapped_tsconfig(ctx, srcs, srcs, **kwargs) if getattr(ctx.attr, "local_compilation_mode", False) else tsc_wrapped_tsconfig(ctx, files, srcs, **kwargs)
 
-    if getattr(ctx.attr, "local_compilation_mode", False):
-        base_tsconfig["bazelOptions"]["allowedStrictDeps"] = []
-
-        #print(">>>> srcs: ", srcs)
-        print(">>>> LSC: base_tsconfig is ", base_tsconfig)
-
     tsconfig = dict(base_tsconfig, **{
         "angularCompilerOptions": angular_compiler_options,
     })
@@ -263,19 +259,22 @@ def ngc_compile_action(
 
     ngc_compilation_mode = "%s %s" % (_get_ivy_compilation_mode(ctx), target_flavor)
 
-    mnemonic = "AngularTemplateCompileLCM" if getattr(ctx.attr, "local_compilation_mode", False) else "AngularTemplateCompile"
-    progress_message_prefix = "Compiling Angular templates in LC mode" if getattr(ctx.attr, "local_compilation_mode", False) else "AngularTemplateCompile"
-    progress_message = "%s (%s) %s" % (
-        progress_message_prefix,
+    mnemonic = "AngularTemplateCompile"
+    progress_message = "Compiling Angular templates (%s) %s" % (
         ngc_compilation_mode,
         label,
     )
 
+    supports_workers = "0"
+    local = "0"
+
     if locale:
         mnemonic = "AngularI18NMerging"
-        supports_workers = "0"
         progress_message = ("Recompiling Angular templates (ngc - %s) %s for locale %s" %
                             (target_flavor, label, locale))
+    elif getattr(ctx.attr, "local_compilation_mode", False):
+        mnemonic = "AngularTemplateCompileLCM"
+        local = "1"
     else:
         supports_workers = str(int(ctx.attr._supports_workers))
 
@@ -301,6 +300,7 @@ def ngc_compile_action(
         executable = ctx.executable.compiler,
         execution_requirements = {
             "supports-workers": supports_workers,
+            "local": local,
         },
     )
 
@@ -345,6 +345,10 @@ def _compile_action_lcm(
 
         group_inputs = [input_file, tsconfig_file] + ctx.files.assets
         group_outputs = [f for f in outputs if _get_short_path_without_ext(f) == basename]
+
+        # additional deps
+        if hasattr(ctx.attr, "node_modules"):
+            group_inputs.extend(_filter_ts_inputs(ctx.files.node_modules))
 
         groups.append({
             "inputs": group_inputs,
@@ -394,9 +398,6 @@ def _compile_action(
     return ngc_compile_action(ctx, ctx.label, action_inputs, outputs, tsconfig_file, node_opts, None, [], target_flavor)
 
 def _prodmode_compile_action(ctx, inputs, outputs, tsconfig_file, node_opts):
-    #if ctx.label.name == "main":
-    #print(">>>> target %s -> inputs:" % ctx.label.name, "\n".join([f.short_path for f in inputs if not f.short_path.endswith(".d.ts")]))
-
     outs = _expected_outs(ctx)
     _compile_action_helper = _compile_action
     if getattr(ctx.attr, "local_compilation_mode", False):
