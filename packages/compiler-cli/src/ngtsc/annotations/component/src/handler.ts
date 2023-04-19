@@ -273,7 +273,7 @@ export class ComponentDecoratorHandler implements
       // Poison the component so that we don't spam further template type-checking errors that
       // result from misconfigured imports.
       isPoisoned = true;
-    } else if (component.has('imports')) {
+    } else if (!this.isLocalCompilation && component.has('imports')) {
       const expr = component.get('imports')!;
       const importResolvers = combineResolvers([
         createModuleWithProvidersResolver(this.reflector, this.isCore),
