@@ -1039,7 +1039,8 @@ export class NgCompiler {
           this.options.i18nNormalizeLineEndingsInICUs === true, this.moduleResolver,
           this.cycleAnalyzer, cycleHandlingStrategy, refEmitter, referencesRegistry,
           this.incrementalCompilation.depGraph, injectableRegistry, semanticDepGraphUpdater,
-          this.closureCompilerEnabled, this.delegatingPerfRecorder, hostDirectivesResolver),
+          this.closureCompilerEnabled, this.delegatingPerfRecorder, hostDirectivesResolver,
+          this.options.compilationMode === 'experimental-local'),
 
       // TODO(alxhub): understand why the cast here is necessary (something to do with `null`
       // not being assignable to `unknown` when wrapped in `Readonly`).
@@ -1063,7 +1064,7 @@ export class NgCompiler {
           reflector, evaluator, metaReader, metaRegistry, ngModuleScopeRegistry, referencesRegistry,
           isCore, refEmitter, this.closureCompilerEnabled,
           this.options.onlyPublishPublicTypingsForNgModules ?? false, injectableRegistry,
-          this.delegatingPerfRecorder),
+          this.delegatingPerfRecorder, this.options.compilationMode === 'experimental-local'),
     ];
 
     const traitCompiler = new TraitCompiler(
