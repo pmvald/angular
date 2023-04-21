@@ -123,6 +123,7 @@ export {
   ɵɵinvalidFactory,
   ɵɵlistener,
   ɵɵloadQuery,
+  ɵɵmakeRuntimeResolverFn,
   ɵɵnamespaceHTML,
   ɵɵnamespaceMathML,
   ɵɵnamespaceSVG,
