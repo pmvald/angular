@@ -6,7 +6,7 @@ import type {ComponentType, DependencyTypeList} from './interfaces/definition';
 import {transitiveScopesFor, transitiveScopesForNgModule} from './jit/module';
 import {getComponentDef, ɵɵsetComponentScope} from './definition';
 
-export function ɵɵmakeRuntimeResolverFn(importedTypes: Type<any>[]): () => DependencyTypeList {
+export function ɵɵmakeRuntimeResolverFn(comp: Type<any>): () => DependencyTypeList {
   /**return () => {
     const list: DependencyTypeList = [];
     for (const imported of importedTypes) {
@@ -16,7 +16,11 @@ export function ɵɵmakeRuntimeResolverFn(importedTypes: Type<any>[]): () => Dep
     return list;
   };**/
 
-  console.log('HIIIIII!!!!!');
+  console.log('>>>>> HIIIIII!!!!! Factory called');
 
-  return () => ([]);
+  return () => {
+    const def = getComponentDef(comp);
+    console.log('>>>>>> I\'m called!', def);
+    return [];
+  }
 }
