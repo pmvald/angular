@@ -244,7 +244,8 @@ export function compileComponentFromMetadata(
         compileDeclarationList(
             o.literalArr(meta.declarations.map(decl => decl.type)), meta.declarationListEmitMode));
   } else if (meta.declarationListEmitMode === DeclarationListEmitMode.RuntimeResolved) {
-    definitionMap.set('dependencies', o.importExpr(R3.makeRuntimeResolverFn).callFn([]));
+    definitionMap.set(
+        'dependencies', o.importExpr(R3.makeRuntimeResolverFn).callFn([meta.type.value]));
   }
 
   if (meta.encapsulation === null) {
