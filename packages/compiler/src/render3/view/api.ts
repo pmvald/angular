@@ -162,6 +162,8 @@ export const enum DeclarationListEmitMode {
    * ```
    */
   ClosureResolved,
+
+  RuntimeResolved,
 }
 
 /**

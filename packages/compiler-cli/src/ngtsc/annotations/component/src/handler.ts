@@ -595,6 +595,24 @@ export class ComponentDecoratorHandler implements
       return {};
     }
 
+    if (this.isLocalCompilation) {
+      if (analysis.meta.isStandalone && analysis.rawImports === null) {
+        return {
+          data: {
+            declarations: EMPTY_ARRAY,
+            declarationListEmitMode: DeclarationListEmitMode.Direct,
+          },
+        };
+      } else {
+        return {
+          data: {
+            declarations: EMPTY_ARRAY,  // new WrappedNodeExpr(analysis.rawImports),
+            declarationListEmitMode: DeclarationListEmitMode.RuntimeResolved,
+          },
+        };
+      }
+    }
+
     const context = getSourceFile(node);
     const metadata = analysis.meta as Readonly<R3ComponentMetadata<R3TemplateDependencyMetadata>>;
 
