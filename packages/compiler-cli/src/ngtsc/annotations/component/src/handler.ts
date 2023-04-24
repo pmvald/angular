@@ -60,7 +60,8 @@ export class ComponentDecoratorHandler implements
       private injectableRegistry: InjectableClassRegistry,
       private semanticDepGraphUpdater: SemanticDepGraphUpdater|null,
       private annotateForClosureCompiler: boolean, private perf: PerfRecorder,
-      private hostDirectivesResolver: HostDirectivesResolver) {
+      private hostDirectivesResolver: HostDirectivesResolver,
+      private readonly isLocalCompilation: boolean) {
     this.extractTemplateOptions = {
       enableI18nLegacyMessageIdFormat: this.enableI18nLegacyMessageIdFormat,
       i18nNormalizeLineEndingsInICUs: this.i18nNormalizeLineEndingsInICUs,
@@ -561,6 +562,9 @@ export class ComponentDecoratorHandler implements
     if (meta.isPoisoned && !this.usePoisonedData) {
       return;
     }
+
+    if (this.isLocalCompilation) return;
+
     const scope = this.typeCheckScopeRegistry.getTypeCheckScope(node);
     if (scope.isPoisoned && !this.usePoisonedData) {
       // Don't type-check components that had errors in their scopes, unless requested.

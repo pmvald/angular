@@ -24,10 +24,12 @@ export type ForeignFunctionResolver =
 export class PartialEvaluator {
   constructor(
       private host: ReflectionHost, private checker: ts.TypeChecker,
-      private dependencyTracker: DependencyTracker|null) {}
+      private dependencyTracker: DependencyTracker|null,
+      private readonly isLocalCompilation = false) {}
 
   evaluate(expr: ts.Expression, foreignFunctionResolver?: ForeignFunctionResolver): ResolvedValue {
-    const interpreter = new StaticInterpreter(this.host, this.checker, this.dependencyTracker);
+    const interpreter = new StaticInterpreter(
+        this.host, this.checker, this.dependencyTracker, this.isLocalCompilation);
     const sourceFile = expr.getSourceFile();
     return interpreter.visit(expr, {
       originatingFile: sourceFile,

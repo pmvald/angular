@@ -963,8 +963,27 @@ export class NgCompiler {
 
     const isCore = isAngularCorePackage(this.inputProgram);
 
-    const evaluator =
-        new PartialEvaluator(reflector, checker, this.incrementalCompilation.depGraph);
+    // Note: If this compilation builds `@angular/core`, we always build in full compilation
+    // mode. Code inside the core package is always compatible with itself, so it does not
+    // make sense to go through the indirection of partial compilation
+    let compilationMode: CompilationMode = CompilationMode.FULL;
+    if (!isCore) {
+      switch (this.options.compilationMode) {
+        case 'full':
+          compilationMode = CompilationMode.FULL;
+          break;
+        case 'partial':
+          compilationMode = CompilationMode.PARTIAL;
+          break;
+        case 'experimental-local':
+          compilationMode = CompilationMode.LOCAL;
+          break;
+      }
+    }
+    const isLocalCompilation = compilationMode === CompilationMode.LOCAL;
+
+    const evaluator = new PartialEvaluator(
+        reflector, checker, this.incrementalCompilation.depGraph, isLocalCompilation);
     const dtsReader = new DtsMetadataReader(checker, reflector);
     const localMetaRegistry = new LocalMetadataRegistry();
     const localMetaReader: MetadataReaderWithIndex = localMetaRegistry;
@@ -1003,24 +1022,6 @@ export class NgCompiler {
 
     const resourceRegistry = new ResourceRegistry();
 
-    // Note: If this compilation builds `@angular/core`, we always build in full compilation
-    // mode. Code inside the core package is always compatible with itself, so it does not
-    // make sense to go through the indirection of partial compilation
-    let compilationMode: CompilationMode = CompilationMode.FULL;
-    if (!isCore) {
-      switch (this.options.compilationMode) {
-        case 'full':
-          compilationMode = CompilationMode.FULL;
-          break;
-        case 'partial':
-          compilationMode = CompilationMode.PARTIAL;
-          break;
-        case 'experimental-local':
-          compilationMode = CompilationMode.LOCAL;
-          break;
-      }
-    }
-
     // Cycles are handled in full compilation mode by "remote scoping".
     // "Remote scoping" does not work well with tree shaking for libraries.
     // So in partial compilation mode, when building a library, a cycle will cause an error.
@@ -1041,7 +1042,8 @@ export class NgCompiler {
           this.options.i18nNormalizeLineEndingsInICUs === true, this.moduleResolver,
           this.cycleAnalyzer, cycleHandlingStrategy, refEmitter, referencesRegistry,
           this.incrementalCompilation.depGraph, injectableRegistry, semanticDepGraphUpdater,
-          this.closureCompilerEnabled, this.delegatingPerfRecorder, hostDirectivesResolver),
+          this.closureCompilerEnabled, this.delegatingPerfRecorder, hostDirectivesResolver,
+          isLocalCompilation),
 
       // TODO(alxhub): understand why the cast here is necessary (something to do with `null`
       // not being assignable to `unknown` when wrapped in `Readonly`).
@@ -1065,7 +1067,7 @@ export class NgCompiler {
           reflector, evaluator, metaReader, metaRegistry, ngModuleScopeRegistry, referencesRegistry,
           exportedProviderStatusResolver, semanticDepGraphUpdater, isCore, refEmitter,
           this.closureCompilerEnabled, this.options.onlyPublishPublicTypingsForNgModules ?? false,
-          injectableRegistry, this.delegatingPerfRecorder),
+          injectableRegistry, this.delegatingPerfRecorder, isLocalCompilation),
     ];
 
     const traitCompiler = new TraitCompiler(

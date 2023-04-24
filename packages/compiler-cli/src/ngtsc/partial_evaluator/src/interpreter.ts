@@ -89,7 +89,8 @@ interface Context {
 export class StaticInterpreter {
   constructor(
       private host: ReflectionHost, private checker: ts.TypeChecker,
-      private dependencyTracker: DependencyTracker|null) {}
+      private dependencyTracker: DependencyTracker|null,
+      private readonly isLocalCompilation = false) {}
 
   visit(node: ts.Expression, context: Context): ResolvedValue {
     return this.visitExpression(node, context);
@@ -221,6 +222,9 @@ export class StaticInterpreter {
       } else {
         // Check if the symbol here is imported.
         if (this.dependencyTracker !== null && this.host.getImportOfIdentifier(node) !== null) {
+          if (this.isLocalCompilation) {
+            return DynamicValue.fromExternalReferenceInLocalMode(node);
+          }
           // It was, but no declaration for the node could be found. This means that the dependency
           // graph for the current file cannot be properly updated to account for this (broken)
           // import. Instead, the originating file is reported as failing dependency analysis,

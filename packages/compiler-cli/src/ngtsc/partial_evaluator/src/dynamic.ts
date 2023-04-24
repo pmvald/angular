@@ -111,6 +111,10 @@ export class DynamicValue<R = unknown> {
     return new DynamicValue(node, ref, DynamicValueReason.EXTERNAL_REFERENCE);
   }
 
+  static fromExternalReferenceInLocalMode(node: ts.Node): DynamicValue {
+    return new DynamicValue(node, null, DynamicValueReason.EXTERNAL_REFERENCE);
+  }
+
   static fromUnsupportedSyntax(node: ts.Node): DynamicValue {
     return new DynamicValue(node, undefined, DynamicValueReason.UNSUPPORTED_SYNTAX);
   }
