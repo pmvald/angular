@@ -591,7 +591,10 @@ export class TraitCompiler implements ProgramTypeCheckAdapter {
       // `Readonly` works.
 
       let compileRes: CompileResult|CompileResult[];
-      if (this.compilationMode === CompilationMode.PARTIAL &&
+      if (this.compilationMode === CompilationMode.LOCAL && trait.handler.compileLocal) {
+        compileRes = trait.handler.compileLocal(clazz, trait.analysis, trait.resolution!);
+      } else if (
+          this.compilationMode === CompilationMode.PARTIAL &&
           trait.handler.compilePartial !== undefined) {
         compileRes = trait.handler.compilePartial(clazz, trait.analysis, trait.resolution!);
       } else {

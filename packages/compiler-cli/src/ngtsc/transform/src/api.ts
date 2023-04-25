@@ -220,6 +220,10 @@ export interface DecoratorHandler<D, A, S extends SemanticSymbol|null, R> {
   compilePartial?
       (node: ClassDeclaration, analysis: Readonly<A>, resolution: Readonly<R>): CompileResult
       |CompileResult[];
+
+  compileLocal?
+      (node: ClassDeclaration, analysis: Readonly<A>, resolution: Readonly<R>): CompileResult
+      |CompileResult[];
 }
 
 /**

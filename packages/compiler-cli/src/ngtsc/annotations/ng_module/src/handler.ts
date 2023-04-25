@@ -36,7 +36,7 @@ export interface NgModuleAnalysis {
   imports: TopLevelImportedExpression[];
   importRefs: Reference<ClassDeclaration>[];
   rawImports: ts.Expression|null;
-  exports: Reference<ClassDeclaration>[];
+  exports: Array<Reference<ClassDeclaration>|DynamicValue>;
   rawExports: ts.Expression|null;
   id: Expression|null;
   factorySymbolName: string;
@@ -384,7 +384,7 @@ export class NgModuleDecoratorHandler implements
     }
 
     const topLevelImports: TopLevelImportedExpression[] = [];
-    if (ngModule.has('imports') && !this.isLocalCompilation) {
+    if (ngModule.has('imports')) {
       const rawImports = unwrapExpression(ngModule.get('imports')!);
 
       let topLevelExpressions: ts.Expression[] = [];
@@ -413,7 +413,7 @@ export class NgModuleDecoratorHandler implements
 
         topLevelImports.push({
           expression: importExpr,
-          resolvedReferences: references as Reference<ClassDeclaration>[],
+          resolvedReferences: references,
           hasModuleWithProviders,
         });
       }
@@ -473,7 +473,7 @@ export class NgModuleDecoratorHandler implements
         imports: topLevelImports,
         rawImports,
         importRefs: this.isLocalCompilation ? [] : importRefs as Reference<ClassDeclaration>[],
-        exports: this.isLocalCompilation ? [] : exportRefs as Reference<ClassDeclaration>[],
+        exports: exportRefs,
         rawExports,
         providers: rawProviders,
         providersRequiringFactory: rawProviders ?
@@ -502,7 +502,8 @@ export class NgModuleDecoratorHandler implements
       schemas: analysis.schemas,
       declarations: analysis.declarations,
       imports: analysis.importRefs,
-      exports: analysis.exports,
+      exports: analysis.exports.filter(e => e instanceof Reference<ClassDeclaration>) as
+          Reference<ClassDeclaration>[],
       rawDeclarations: analysis.rawDeclarations,
       rawImports: analysis.rawImports,
       rawExports: analysis.rawExports,
@@ -517,12 +518,14 @@ export class NgModuleDecoratorHandler implements
 
   resolve(node: ClassDeclaration, analysis: Readonly<NgModuleAnalysis>):
       ResolveResult<NgModuleResolution> {
-    const scope = this.scopeRegistry.getScopeOfModule(node);
+    const scope = this.isLocalCompilation ? null : this.scopeRegistry.getScopeOfModule(node);
     const diagnostics: ts.Diagnostic[] = [];
 
-    const scopeDiagnostics = this.scopeRegistry.getDiagnosticsOfModule(node);
-    if (scopeDiagnostics !== null) {
-      diagnostics.push(...scopeDiagnostics);
+    if (!this.isLocalCompilation) {
+      const scopeDiagnostics = this.scopeRegistry.getDiagnosticsOfModule(node);
+      if (scopeDiagnostics !== null) {
+        diagnostics.push(...scopeDiagnostics);
+      }
     }
 
     if (analysis.providersRequiringFactory !== null) {
@@ -544,6 +547,12 @@ export class NgModuleDecoratorHandler implements
         continue;
       }
 
+      if (topLevelImport.resolvedReferences[0] instanceof DynamicValue) {
+        if (!this.isLocalCompilation) throw new Error('No allowed!');
+        data.injectorImports.push(new WrappedNodeExpr(topLevelImport.expression));
+        continue;
+      }
+
       const refsToEmit: Reference<ClassDeclaration>[] = [];
       let symbol: NgModuleSymbol|null = null;
       if (this.semanticDepGraphUpdater !== null) {
@@ -554,6 +563,7 @@ export class NgModuleDecoratorHandler implements
       }
 
       for (const ref of topLevelImport.resolvedReferences) {
+        if (ref instanceof DynamicValue) throw new Error('Invalid!');
         const dirMeta = this.metaReader.getDirectiveMetadata(ref);
         if (dirMeta !== null) {
           if (!dirMeta.isComponent) {
@@ -603,12 +613,17 @@ export class NgModuleDecoratorHandler implements
       }
     }
 
-    if (scope !== null && !scope.compilation.isPoisoned) {
+    if (this.isLocalCompilation || (scope !== null && !scope.compilation.isPoisoned)) {
       // Using the scope information, extend the injector's imports using the modules that are
       // specified as module exports.
       const context = getSourceFile(node);
       for (const exportRef of analysis.exports) {
-        if (isNgModule(exportRef.node, scope.compilation)) {
+        if (exportRef instanceof DynamicValue) {
+          if (!this.isLocalCompilation) throw new Error('Invalid!');
+          data.injectorImports.push(new WrappedNodeExpr(exportRef.node));
+          continue;
+        }
+        if (scope && isNgModule(exportRef.node, scope.compilation)) {
           const type = this.refEmitter.emit(exportRef, context);
           assertSuccessfulReferenceEmit(type, node, 'NgModule');
           data.injectorImports.push(type.expression);
@@ -679,6 +694,26 @@ export class NgModuleDecoratorHandler implements
     this.insertMetadataStatement(ngModuleDef.statements, metadata);
     // NOTE: no remote scoping required as this is banned in partial compilation.
     return this.compileNgModule(factoryFn, injectorDef, ngModuleDef);
+  }
+
+  compileLocal(
+      node: ClassDeclaration,
+      {inj, mod, fac, classMetadata, declarations, remoteScopesMayRequireCycleProtection}:
+          Readonly<NgModuleAnalysis>,
+      {injectorImports}: Readonly<NgModuleResolution>): CompileResult[] {
+    const factoryFn = compileNgFactoryDefField(fac);
+    const ngInjectorDef = compileInjector({
+      ...inj,
+      imports: injectorImports,
+    });
+    const ngModuleDef = compileNgModule(mod);
+    const statements = ngModuleDef.statements;
+    const metadata = classMetadata !== null ? compileClassMetadata(classMetadata) : null;
+    this.insertMetadataStatement(statements, metadata);
+    this.appendRemoteScopingStatements(
+        statements, node, declarations, remoteScopesMayRequireCycleProtection);
+
+    return this.compileNgModule(factoryFn, ngInjectorDef, ngModuleDef);
   }
 
   /**
@@ -860,7 +895,7 @@ function isModuleIdExpression(expr: ts.Expression): boolean {
 
 export interface TopLevelImportedExpression {
   expression: ts.Expression;
-  resolvedReferences: Array<Reference<ClassDeclaration>>;
+  resolvedReferences: Array<Reference<ClassDeclaration>|DynamicValue>;
   hasModuleWithProviders: boolean;
 }
 
