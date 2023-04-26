@@ -365,8 +365,9 @@ export class NgModuleDecoratorHandler implements
       containsForwardDecls,
       id,
       // Use `ɵɵsetNgModuleScope` to patch selector scopes onto the generated definition in a
-      // tree-shakeable way.
-      selectorScopeMode: R3SelectorScopeMode.SideEffect,
+      // tree-shakeable way. No tree shaking needed for local compilation mode.
+      selectorScopeMode: this.isLocalCompilation ? R3SelectorScopeMode.Inline :
+                                                   R3SelectorScopeMode.SideEffect,
       // TODO: to be implemented as a part of FW-1004.
       schemas: [],
     };
