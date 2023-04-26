@@ -4,7 +4,7 @@ import type {NgModuleType} from '../metadata/ng_module_def';
 import {flatten} from '../util/array_utils';
 import type {ComponentType, DependencyTypeList} from './interfaces/definition';
 import {transitiveScopesFor, transitiveScopesForNgModule} from './jit/module';
-import {getComponentDef, ɵɵsetComponentScope} from './definition';
+import {getComponentDef, getNgModuleDef, ɵɵsetComponentScope} from './definition';
 
 export function ɵɵmakeRuntimeResolverFn(comp: Type<any>): () => DependencyTypeList {
   /**return () => {
@@ -23,4 +23,9 @@ export function ɵɵmakeRuntimeResolverFn(comp: Type<any>): () => DependencyType
     console.log('>>>>>> I\'m called!', def);
     return [];
   }
+}
+
+export function ɵɵsetDeclarationsScope(moduleType: NgModuleType<any>): void {
+  const def = getNgModuleDef(moduleType);
+  console.log('>>>>> HIIIIII!!!!! ɵɵsetDeclarationsScope called!!', def);
 }

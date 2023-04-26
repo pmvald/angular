@@ -714,6 +714,10 @@ export class NgModuleDecoratorHandler implements
     this.appendRemoteScopingStatements(
         statements, node, declarations, remoteScopesMayRequireCycleProtection);
 
+    statements.push(new InvokeFunctionExpr(new ExternalExpr(R3Identifiers.setDeclarationsScope), [
+                      new WrappedNodeExpr(node.name)
+                    ]).toStmt());
+
     return this.compileNgModule(factoryFn, ngInjectorDef, ngModuleDef);
   }
 

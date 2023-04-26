@@ -242,7 +242,8 @@ export class Identifiers {
 
   static makeRuntimeResolverFn:
       o.ExternalReference = {name: 'ɵɵmakeRuntimeResolverFn', moduleName: CORE};
-
+  static setDeclarationsScope:
+      o.ExternalReference = {name: 'ɵɵsetDeclarationsScope', moduleName: CORE};
   static defineComponent: o.ExternalReference = {name: 'ɵɵdefineComponent', moduleName: CORE};
   static declareComponent: o.ExternalReference = {name: 'ɵɵngDeclareComponent', moduleName: CORE};
 

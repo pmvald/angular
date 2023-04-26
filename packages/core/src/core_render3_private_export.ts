@@ -124,6 +124,7 @@ export {
   ɵɵlistener,
   ɵɵloadQuery,
   ɵɵmakeRuntimeResolverFn,
+  ɵɵsetDeclarationsScope,
   ɵɵnamespaceHTML,
   ɵɵnamespaceMathML,
   ɵɵnamespaceSVG,

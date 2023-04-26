@@ -178,7 +178,7 @@ export {
 export {NO_CHANGE} from './tokens';
 export { ɵɵresolveBody, ɵɵresolveDocument,ɵɵresolveWindow} from './util/misc_utils';
 export { ɵɵtemplateRefExtractor} from './view_engine_compatibility_prebound';
-export {ɵɵmakeRuntimeResolverFn} from './local_compilation';
+export {ɵɵmakeRuntimeResolverFn, ɵɵsetDeclarationsScope} from './local_compilation';
 // clang-format on
 
 export {
