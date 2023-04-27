@@ -11,6 +11,7 @@ import ts from 'typescript';
 
 import {Reference} from '../../../imports';
 import {ClassPropertyMapping, ComponentResources, DirectiveTypeCheckMeta, HostDirectiveMeta, InputMapping} from '../../../metadata';
+import {DynamicValue} from '../../../partial_evaluator';
 import {ClassDeclaration} from '../../../reflection';
 import {SubsetOfKeys} from '../../../util/src/typescript';
 
@@ -67,7 +68,7 @@ export interface ComponentAnalysisData {
   animationTriggerNames: AnimationTriggerNames|null;
 
   rawImports: ts.Expression|null;
-  resolvedImports: Reference<ClassDeclaration>[]|null;
+  resolvedImports: Array<Reference<ClassDeclaration>|DynamicValue>|null;
 
   schemas: SchemaMetadata[]|null;
 

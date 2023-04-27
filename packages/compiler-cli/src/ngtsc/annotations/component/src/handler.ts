@@ -7,6 +7,7 @@
  */
 
 import {AnimationTriggerNames, compileClassMetadata, compileComponentFromMetadata, compileDeclareClassMetadata, compileDeclareComponentFromMetadata, ConstantPool, CssSelector, DeclarationListEmitMode, DeclareComponentTemplateInfo, DEFAULT_INTERPOLATION_CONFIG, DomElementSchemaRegistry, Expression, FactoryTarget, makeBindingParser, R3ComponentMetadata, R3DirectiveDependencyMetadata, R3NgModuleDependencyMetadata, R3PipeDependencyMetadata, R3TargetBinder, R3TemplateDependency, R3TemplateDependencyKind, R3TemplateDependencyMetadata, SchemaMetadata, SelectorMatcher, ViewEncapsulation, WrappedNodeExpr} from '@angular/compiler';
+import {wrapReference} from '@angular/compiler/src/render3/util';
 import ts from 'typescript';
 
 import {Cycle, CycleAnalyzer, CycleHandlingStrategy} from '../../../cycles';
@@ -17,7 +18,7 @@ import {DependencyTracker} from '../../../incremental/api';
 import {extractSemanticTypeParameters, SemanticDepGraphUpdater} from '../../../incremental/semantic_graph';
 import {IndexingContext} from '../../../indexer';
 import {DirectiveMeta, extractDirectiveTypeCheckMeta, HostDirectivesResolver, MatchSource, MetadataReader, MetadataRegistry, MetaKind, PipeMeta, ResourceRegistry} from '../../../metadata';
-import {PartialEvaluator} from '../../../partial_evaluator';
+import {DynamicValue, PartialEvaluator} from '../../../partial_evaluator';
 import {PerfEvent, PerfRecorder} from '../../../perf';
 import {ClassDeclaration, DeclarationNode, Decorator, ReflectionHost, reflectObjectLiteral} from '../../../reflection';
 import {ComponentScopeKind, ComponentScopeReader, DtsModuleScopeResolver, LocalModuleScopeRegistry, makeNotStandaloneDiagnostic, makeUnknownComponentImportDiagnostic, TypeCheckScopeRegistry} from '../../../scope';
@@ -258,7 +259,7 @@ export class ComponentDecoratorHandler implements
           component.get('providers')!, this.reflector, this.evaluator);
     }
 
-    let resolvedImports: Reference<ClassDeclaration>[]|null = null;
+    let resolvedImports: Array<Reference<ClassDeclaration>|DynamicValue>|null = null;
     let rawImports: ts.Expression|null = null;
 
     if (component.has('imports') && !metadata.isStandalone) {
@@ -280,19 +281,24 @@ export class ComponentDecoratorHandler implements
         forwardRefResolver,
       ]);
       const imported = this.evaluator.evaluate(expr, importResolvers);
-      const {imports: flattened, diagnostics: importDiagnostics} =
-          validateAndFlattenComponentImports(imported, expr);
 
-      resolvedImports = flattened;
-      rawImports = expr;
+      if (!this.isLocalCompilation) {
+        const {imports: flattened, diagnostics: importDiagnostics} =
+            validateAndFlattenComponentImports(imported, expr);
 
-      if (importDiagnostics.length > 0) {
-        isPoisoned = true;
-        if (diagnostics === undefined) {
-          diagnostics = [];
+        resolvedImports = flattened;
+
+        if (importDiagnostics.length > 0) {
+          isPoisoned = true;
+          if (diagnostics === undefined) {
+            diagnostics = [];
+          }
+          diagnostics.push(...importDiagnostics);
         }
-        diagnostics.push(...importDiagnostics);
+      } else if (Array.isArray(imported) && imported[0] instanceof DynamicValue) {
+        resolvedImports = imported as DynamicValue[];
       }
+      rawImports = expr;
     }
 
     let schemas: SchemaMetadata[]|null = null;
@@ -500,7 +506,8 @@ export class ComponentDecoratorHandler implements
       isPoisoned: analysis.isPoisoned,
       isStructural: false,
       isStandalone: analysis.meta.isStandalone,
-      imports: analysis.resolvedImports,
+      imports: this.isLocalCompilation ? [] :
+                                         analysis.resolvedImports as Reference<ClassDeclaration>[],
       animationTriggerNames: analysis.animationTriggerNames,
       schemas: analysis.schemas,
       decorator: analysis.decorator,
@@ -596,17 +603,27 @@ export class ComponentDecoratorHandler implements
     }
 
     if (this.isLocalCompilation) {
-      if (analysis.meta.isStandalone && analysis.rawImports === null) {
+      if (analysis.meta.isStandalone && analysis.resolvedImports === null) {
         return {
           data: {
             declarations: EMPTY_ARRAY,
             declarationListEmitMode: DeclarationListEmitMode.Direct,
           },
         };
+      } else if (analysis.meta.isStandalone && analysis.resolvedImports !== null) {
+        return {
+          data: {
+            declarations: analysis.resolvedImports.map(r => ({
+                                                         kind: R3TemplateDependencyKind.Runtime,
+                                                         type: wrapReference(r.node).type,
+                                                       })),
+            declarationListEmitMode: DeclarationListEmitMode.RuntimeResolved,
+          },
+        };
       } else {
         return {
           data: {
-            declarations: EMPTY_ARRAY,  // new WrappedNodeExpr(analysis.rawImports),
+            declarations: EMPTY_ARRAY,
             declarationListEmitMode: DeclarationListEmitMode.RuntimeResolved,
           },
         };
@@ -795,8 +812,9 @@ export class ComponentDecoratorHandler implements
       // direct way to check whether a `Reference` came from a `forwardRef`. Instead, we check if
       // the reference is `synthetic`, implying it came from _any_ foreign function resolver,
       // including the `forwardRef` resolver.
-      const standaloneImportMayBeForwardDeclared =
-          analysis.resolvedImports !== null && analysis.resolvedImports.some(ref => ref.synthetic);
+      const standaloneImportMayBeForwardDeclared = analysis.resolvedImports !== null &&
+          analysis.resolvedImports.some(
+              ref => (ref instanceof Reference<ClassDeclaration>) && ref.synthetic);
 
       const cycleDetected = cyclesFromDirectives.size !== 0 || cyclesFromPipes.size !== 0;
       if (!cycleDetected) {
@@ -862,9 +880,11 @@ export class ComponentDecoratorHandler implements
       }
     }
 
-    if (analysis.resolvedImports !== null && analysis.rawImports !== null) {
+    if (!this.isLocalCompilation && analysis.resolvedImports !== null &&
+        analysis.rawImports !== null) {
       const standaloneDiagnostics = validateStandaloneImports(
-          analysis.resolvedImports, analysis.rawImports, this.metaReader, this.scopeReader);
+          analysis.resolvedImports as Reference<ClassDeclaration>[], analysis.rawImports,
+          this.metaReader, this.scopeReader);
       diagnostics.push(...standaloneDiagnostics);
     }
 

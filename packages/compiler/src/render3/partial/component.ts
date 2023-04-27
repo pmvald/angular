@@ -182,6 +182,8 @@ function compileUsedDependenciesMetadata(meta: R3ComponentMetadata<R3TemplateDep
         ngModuleMeta.set('kind', o.literal('ngmodule'));
         ngModuleMeta.set('type', wrapType(decl.type));
         return ngModuleMeta.toLiteralMap();
+      case R3TemplateDependencyKind.Runtime:
+        throw new Error('Invalid path for toOptionalLiteralArray');
     }
   });
 }

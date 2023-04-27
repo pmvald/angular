@@ -239,14 +239,17 @@ export function compileComponentFromMetadata(
     definitionMap.set('template', templateFn);
   }
 
-  if (meta.declarations.length > 0) {
+  if (meta.declarationListEmitMode !== DeclarationListEmitMode.RuntimeResolved &&
+      meta.declarations.length > 0) {
     definitionMap.set(
         'dependencies',
         compileDeclarationList(
             o.literalArr(meta.declarations.map(decl => decl.type)), meta.declarationListEmitMode));
   } else if (meta.declarationListEmitMode === DeclarationListEmitMode.RuntimeResolved) {
-    definitionMap.set(
-        'dependencies', o.importExpr(R3.makeRuntimeResolverFn).callFn([meta.type.value]));
+    definitionMap.set('dependencies', o.importExpr(R3.makeRuntimeResolverFn).callFn([
+      meta.type.value,
+      o.literalArr((meta.declarations || []).map(decl => decl.type)),
+    ]));
   }
 
   if (meta.encapsulation === null) {

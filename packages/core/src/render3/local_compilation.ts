@@ -9,7 +9,8 @@ import {isNgModule} from './jit/util';
 const DEBUG = true;
 const log = DEBUG ? (...args: any[]) => console.log('>>>>> DEBUG: ', ...args) : () => {};
 
-export function ɵɵmakeRuntimeResolverFn(comp: Type<any>): () => DependencyTypeList {
+export function ɵɵmakeRuntimeResolverFn(comp: Type<any>, imports: Type<any>[]): () =>
+    DependencyTypeList {
   return () => {
     const def = getComponentDef(comp);
     log('Inner ɵɵmakeRuntimeResolverFn called!', comp);
