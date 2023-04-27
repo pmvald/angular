@@ -12,10 +12,12 @@ const log = DEBUG ? (...args: any[]) => console.log('>>>>> DEBUG: ', ...args) : 
 export function ɵɵmakeRuntimeResolverFn(comp: Type<any>, imports: Type<any>[]): () =>
     DependencyTypeList {
   return () => {
-    const def = getComponentDef(comp);
     log('Inner ɵɵmakeRuntimeResolverFn called!', comp);
 
-    const moduleImports = def?.moduleImports;
+    const def = getComponentDef(comp);
+    if (!def) return [];
+
+    const moduleImports = def.standalone ? imports : def.moduleImports;
     if (!moduleImports) return [];
 
     const deps: Type<any>[] = [];
