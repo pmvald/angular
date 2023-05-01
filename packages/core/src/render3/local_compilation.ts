@@ -24,12 +24,12 @@ export function ɵɵmakeRuntimeResolverFn(comp: Type<any>, imports: Type<any>[])
 
     for (const t of moduleImports) {
       const scope = transitiveScopesFor(t);
-      deps.push(...scope.exported.directives, ...scope.exported.pipes);
+      deps.push(t, ...scope.exported.directives, ...scope.exported.pipes);
     }
 
     log('ɵɵmakeRuntimeResolverFn: deps emited:', deps);
 
-    return deps;
+    return [...new Set(deps)];
   }
 }
 
