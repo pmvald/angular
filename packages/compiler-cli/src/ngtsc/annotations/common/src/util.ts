@@ -12,7 +12,7 @@ import ts from 'typescript';
 import {assertSuccessfulReferenceEmit, ImportedFile, ImportFlags, ModuleResolver, Reference, ReferenceEmitter} from '../../../imports';
 import {attachDefaultImportDeclaration} from '../../../imports/src/default';
 import {DynamicValue, ForeignFunctionResolver, PartialEvaluator} from '../../../partial_evaluator';
-import {ClassDeclaration, Decorator, Import, ImportedTypeValueReference, LocalTypeValueReference, ReflectionHost, TypeValueReference, TypeValueReferenceKind} from '../../../reflection';
+import {ClassDeclaration, Decorator, Import, ImportedTypeValueReference, LocalTypeValueReference, MaybeImportedTypeValueReference, ReflectionHost, TypeValueReference, TypeValueReferenceKind} from '../../../reflection';
 import {CompileResult} from '../../../transform';
 
 /**
@@ -23,7 +23,8 @@ import {CompileResult} from '../../../transform';
  * file in which the `TypeValueReference` originated.
  */
 export function valueReferenceToExpression(valueRef: LocalTypeValueReference|
-                                           ImportedTypeValueReference): Expression;
+                                           ImportedTypeValueReference|
+                                           MaybeImportedTypeValueReference): Expression;
 export function valueReferenceToExpression(valueRef: TypeValueReference): Expression|null;
 export function valueReferenceToExpression(valueRef: TypeValueReference): Expression|null {
   if (valueRef.kind === TypeValueReferenceKind.UNAVAILABLE) {
@@ -37,7 +38,7 @@ export function valueReferenceToExpression(valueRef: TypeValueReference): Expres
   } else {
     let importExpr: Expression =
         new ExternalExpr({moduleName: valueRef.moduleName, name: valueRef.importedName});
-    if (valueRef.nestedPath !== null) {
+    if (valueRef.kind === TypeValueReferenceKind.IMPORTED && valueRef.nestedPath !== null) {
       for (const property of valueRef.nestedPath) {
         importExpr = new ReadPropExpr(importExpr, property);
       }

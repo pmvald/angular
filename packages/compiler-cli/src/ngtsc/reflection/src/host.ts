@@ -190,6 +190,7 @@ export interface ClassMember {
 export const enum TypeValueReferenceKind {
   LOCAL,
   IMPORTED,
+  MAYBE_IMPORTED,
   UNAVAILABLE,
 }
 
@@ -239,6 +240,24 @@ export interface ImportedTypeValueReference {
   nestedPath: string[]|null;
 
   valueDeclaration: DeclarationNode;
+}
+
+/**
+ * Used only for local compilation mode, and indicates the type might be available in other files.
+ */
+export interface MaybeImportedTypeValueReference {
+  kind: TypeValueReferenceKind.MAYBE_IMPORTED;
+
+  /**
+   * The module specifier from which the `importedName` symbol should be imported.
+   */
+  moduleName: string;
+
+  /**
+   * The name of the top-level symbol that is imported from `moduleName`. If `nestedPath` is also
+   * present, a nested object is being referenced from the top-level symbol.
+   */
+  importedName: string;
 }
 
 /**
@@ -338,8 +357,8 @@ export type UnavailableValue =
  *
  * See the individual types for additional information.
  */
-export type TypeValueReference =
-    LocalTypeValueReference|ImportedTypeValueReference|UnavailableTypeValueReference;
+export type TypeValueReference = LocalTypeValueReference|ImportedTypeValueReference|
+    MaybeImportedTypeValueReference|UnavailableTypeValueReference;
 
 /**
  * A parameter to a constructor.

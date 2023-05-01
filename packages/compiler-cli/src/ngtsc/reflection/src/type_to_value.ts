@@ -18,7 +18,8 @@ import {TypeValueReference, TypeValueReferenceKind, UnavailableTypeValueReferenc
  * declaration, or if it is not possible to statically understand.
  */
 export function typeToValue(
-    typeNode: ts.TypeNode|null, checker: ts.TypeChecker): TypeValueReference {
+    typeNode: ts.TypeNode|null, checker: ts.TypeChecker,
+    isLocalCompilation = false): TypeValueReference {
   // It's not possible to get a value expression if the parameter doesn't even have a type.
   if (typeNode === null) {
     return missingType();
@@ -37,7 +38,8 @@ export function typeToValue(
   // It's only valid to convert a type reference to a value reference if the type actually
   // has a value declaration associated with it. Note that const enums are an exception,
   // because while they do have a value declaration, they don't exist at runtime.
-  if (decl.valueDeclaration === undefined || decl.flags & ts.SymbolFlags.ConstEnum) {
+  if (!isLocalCompilation &&
+      (decl.valueDeclaration === undefined || decl.flags & ts.SymbolFlags.ConstEnum)) {
     let typeOnlyDecl: ts.Declaration|null = null;
     if (decl.declarations !== undefined && decl.declarations.length > 0) {
       typeOnlyDecl = decl.declarations[0];
@@ -92,13 +94,22 @@ export function typeToValue(
       const [_localName, ...nestedPath] = symbols.symbolNames;
 
       const moduleName = extractModuleName(firstDecl.parent.parent.parent);
-      return {
-        kind: TypeValueReferenceKind.IMPORTED,
-        valueDeclaration: decl.valueDeclaration,
-        moduleName,
-        importedName,
-        nestedPath
-      };
+
+      if (decl.valueDeclaration) {
+        return {
+          kind: TypeValueReferenceKind.IMPORTED,
+          valueDeclaration: decl.valueDeclaration,
+          moduleName,
+          importedName,
+          nestedPath
+        };
+      } else if (isLocalCompilation) {
+        return {
+          kind: TypeValueReferenceKind.MAYBE_IMPORTED,
+          moduleName,
+          importedName,
+        };
+      }
     } else if (ts.isNamespaceImport(firstDecl)) {
       // The import is a namespace import
       //   import * as Foo from 'foo';
@@ -119,13 +130,22 @@ export function typeToValue(
       const [_ns, importedName, ...nestedPath] = symbols.symbolNames;
 
       const moduleName = extractModuleName(firstDecl.parent.parent);
-      return {
-        kind: TypeValueReferenceKind.IMPORTED,
-        valueDeclaration: decl.valueDeclaration,
-        moduleName,
-        importedName,
-        nestedPath
-      };
+
+      if (decl.valueDeclaration) {
+        return {
+          kind: TypeValueReferenceKind.IMPORTED,
+          valueDeclaration: decl.valueDeclaration,
+          moduleName,
+          importedName,
+          nestedPath
+        };
+      } else if (isLocalCompilation) {
+        return {
+          kind: TypeValueReferenceKind.MAYBE_IMPORTED,
+          moduleName,
+          importedName,
+        };
+      }
     }
   }
 
