@@ -355,7 +355,7 @@ export interface ComponentDef<T> extends DirectiveDef<T> {
    * In LCM, if not standalone this field will be used to store the associated module imports. This
    * will be used later by LCM runtimes to calculate the component deps.
    */
-  moduleImports?: Type<any>[];
+  parentModule?: Type<any>;
 }
 
 /**

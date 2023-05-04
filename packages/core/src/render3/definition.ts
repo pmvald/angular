@@ -310,7 +310,7 @@ export function ɵɵdefineComponent<T>(componentDefinition: ComponentDefinition<
       schemas: componentDefinition.schemas || null,
       tView: null,
       id: '',
-      moduleImports: [],
+      parentModule: undefined,
     };
 
     initFeatures(def);

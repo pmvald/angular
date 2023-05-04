@@ -1,10 +1,9 @@
-
 import type {Type} from '../interface/type';
 import type {NgModuleType} from '../metadata/ng_module_def';
-import type {ComponentType, DependencyTypeList} from './interfaces/definition';
-import {transitiveScopesFor, transitiveScopesForNgModule} from './jit/module';
+import type {DependencyTypeList} from './interfaces/definition';
+import {transitiveScopesFor} from './jit/module';
 import {getComponentDef, getNgModuleDef, isStandalone} from './definition';
-import {isNgModule, isModuleWithProviders} from './jit/util';
+import {isNgModule} from './jit/util';
 
 const DEBUG = true;
 const log = DEBUG ? (...args: any[]) => console.log('>>>>> DEBUG: ', ...args) : () => {};
@@ -17,19 +16,27 @@ export function ɵɵmakeRuntimeResolverFn(comp: Type<any>, imports: Type<any>[])
     const def = getComponentDef(comp);
     if (!def) return [];
 
-    const moduleImports = def.standalone ? imports : def.moduleImports;
-    if (!moduleImports) return [];
+    let deps: Type<any>[] = [];
 
-    const deps: Type<any>[] = [];
-
-    for (const t of moduleImports) {
-      const scope = transitiveScopesFor(t);
-      deps.push(t, ...scope.exported.directives, ...scope.exported.pipes);
+    if (def.standalone) {  // Standalone
+      for (const t of imports) {
+        if (isNgModule(t) || isStandalone(t)) {
+          const scope = transitiveScopesFor(t);
+          deps.push(t, ...scope.exported.directives, ...scope.exported.pipes);
+        }
+      }
+    } else {  // Module associated
+      if (def.parentModule) {
+        const scope = transitiveScopesFor(def.parentModule);
+        deps.push(def.parentModule, ...scope.compilation.directives, ...scope.compilation.pipes);
+      }
     }
+
+    deps = [...new Set(deps)].filter(e => e !== comp);
 
     log('ɵɵmakeRuntimeResolverFn: deps emited:', deps);
 
-    return [...new Set(deps)];
+    return deps;
   }
 }
 
@@ -39,27 +46,13 @@ export function ɵɵsetDeclarationsScope(moduleType: NgModuleType<any>): void {
   const def = getNgModuleDef(moduleType);
   if (!def) return;
 
-  const imports: Type<any>[] = (typeof def.imports === 'function') ? def.imports() : def.imports;
-
-  const scopes: Type<any>[] = [];
-
-  for (const im of imports) {
-    if (isModuleWithProviders(im)) {
-      scopes.push(im.ngModule);
-    } else if (isNgModule(im) || isStandalone(im)) {
-      scopes.push(im);
-    }
-  }
-
-  log('ɵɵsetDeclarationsScope: Scopes to be hoisted:', scopes);
-
   const declarations: Type<any>[] =
       (typeof def.declarations === 'function') ? def.declarations() : def.declarations;
 
   for (const decl of declarations) {
     const def = getComponentDef(decl);
     if (def) {
-      def.moduleImports = scopes;
+      def.parentModule = moduleType;
     }
   }
 }
