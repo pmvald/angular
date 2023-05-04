@@ -807,7 +807,7 @@ export class NgModuleDecoratorHandler implements
   private toR3Reference(
       value: Reference<ClassDeclaration>|DynamicValue, meta: ts.ObjectLiteralExpression,
       node?: ClassDeclaration, valueContext?: ts.SourceFile): R3Reference {
-    if (value instanceof DynamicValue && value.isFromExternalReference()) {
+    if (value instanceof DynamicValue && this.isLocalCompilation) {
       return wrapReference(value.node);
     } else if (value instanceof Reference<ClassDeclaration>&& valueContext && node) {
       return this._toR3Reference(
@@ -867,7 +867,7 @@ export class NgModuleDecoratorHandler implements
         }
         refList.push(entry);
         absoluteIndex += 1;
-      } else if (entry instanceof DynamicValue && entry.isFromExternalReference()) {
+      } else if (entry instanceof DynamicValue && this.isLocalCompilation) {
         refList.push(entry);
         absoluteIndex += 1;
       } else {
