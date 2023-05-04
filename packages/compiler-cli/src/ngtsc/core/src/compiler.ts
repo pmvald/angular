@@ -617,7 +617,8 @@ export class NgCompiler {
     ];
 
     const afterDeclarations: ts.TransformerFactory<ts.SourceFile>[] = [];
-    if (compilation.dtsTransforms !== null) {
+    if (this.options.compilationMode !== 'experimental-local' &&
+        compilation.dtsTransforms !== null) {
       afterDeclarations.push(
           declarationTransformFactory(compilation.dtsTransforms, importRewriter));
     }
