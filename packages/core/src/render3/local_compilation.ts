@@ -4,7 +4,7 @@ import type {NgModuleType} from '../metadata/ng_module_def';
 import type {ComponentType, DependencyTypeList} from './interfaces/definition';
 import {transitiveScopesFor, transitiveScopesForNgModule} from './jit/module';
 import {getComponentDef, getNgModuleDef, isStandalone} from './definition';
-import {isNgModule} from './jit/util';
+import {isNgModule, isModuleWithProviders} from './jit/util';
 
 const DEBUG = true;
 const log = DEBUG ? (...args: any[]) => console.log('>>>>> DEBUG: ', ...args) : () => {};
@@ -41,7 +41,15 @@ export function ɵɵsetDeclarationsScope(moduleType: NgModuleType<any>): void {
 
   const imports: Type<any>[] = (typeof def.imports === 'function') ? def.imports() : def.imports;
 
-  const scopes: Type<any>[] = imports.filter(decl => isNgModule(decl) || isStandalone(decl));
+  const scopes: Type<any>[] = [];
+
+  for (const im of imports) {
+    if (isModuleWithProviders(im)) {
+      scopes.push(im.ngModule);
+    } else if (isNgModule(im) || isStandalone(im)) {
+      scopes.push(im);
+    }
+  }
 
   log('ɵɵsetDeclarationsScope: Scopes to be hoisted:', scopes);
 
