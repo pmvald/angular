@@ -490,6 +490,8 @@ export function patchComponentDefWithScope<C>(
 export function transitiveScopesFor<T>(type: Type<T>): NgModuleTransitiveScopes {
   if (isNgModule(type)) {
     return transitiveScopesForNgModule(type);
+  } else if (isModuleWithProviders(type)) {
+    return transitiveScopesForNgModule((type as any as ModuleWithProviders<T>).ngModule);
   } else if (isStandalone(type)) {
     const directiveDef = getComponentDef(type) || getDirectiveDef(type);
     if (directiveDef !== null) {
