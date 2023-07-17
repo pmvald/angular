@@ -198,5 +198,236 @@ runInEachFileSystem(() => {
            expect(jsContents).not.toContain('i0.ɵɵgetComponentDepsFactory');
          });
     });
+
+    describe('constructor injection', () => {
+      it('should include injector types with all possible import styles into component factory', () => {
+        env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @Component({
+            selector: 'test-main',
+            template: '<span>Hello world</span>',
+          })
+          export class MainComponent {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          
+          @NgModule({
+            declarations: [MainComponent],  
+          })
+          export class MainModule {
+          }
+          `);
+
+        env.driveMain();
+        const jsContents = env.getContents('test.js');
+
+        expect(jsContents)
+            .not.toContain(
+                'MainComponent.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+      });
+
+      it('should include injector types with all possible import styles into standalone component factory',
+         () => {
+           env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @Component({
+            standalone: true,
+            selector: 'test-main',
+            template: '<span>Hello world</span>',
+          })
+          export class MainComponent {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          `);
+
+           env.driveMain();
+           const jsContents = env.getContents('test.js');
+
+           expect(jsContents)
+               .not.toContain(
+                   'MainComponent.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+         });
+
+      it('should include injector types with all possible import styles into directive factory', () => {
+        env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @Directive({
+          })
+          export class MainDirective {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          
+          @NgModule({
+            declarations: [MainDirective],  
+          })
+          export class MainModule {
+          }
+          `);
+
+        env.driveMain();
+        const jsContents = env.getContents('test.js');
+
+        expect(jsContents)
+            .not.toContain(
+                'MainDirective.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+      });
+
+      it('should include injector types with all possible import styles into standalone directive factory',
+         () => {
+           env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @Directive({
+            standalone: true,
+          })
+          export class MainDirective {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          `);
+
+           env.driveMain();
+           const jsContents = env.getContents('test.js');
+
+           expect(jsContents)
+               .not.toContain(
+                   'MainDirective.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+         });
+
+      it('should include injector types with all possible import styles into pipe factory', () => {
+        env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @Pipe({
+          })
+          export class MainPipe {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          
+          @NgModule({
+            declarations: [MainPipe],  
+          })
+          export class MainModule {
+          }
+          `);
+
+        env.driveMain();
+        const jsContents = env.getContents('test.js');
+
+        expect(jsContents)
+            .not.toContain(
+                'MainPipe.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+      });
+
+      it('should include injector types with all possible import styles into standalone pipe factory',
+         () => {
+           env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @Pipe({
+            standalone: true,
+          })
+          export class MainPipe {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          `);
+
+           env.driveMain();
+           const jsContents = env.getContents('test.js');
+
+           expect(jsContents)
+               .not.toContain(
+                   'MainPipe.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+         });
+
+      it('should include injector types with all possible import styles into injectable factory', () => {
+        env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @Injectable({
+            providedIn: 'root',
+          })
+          export class MainService {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          `);
+
+        env.driveMain();
+        const jsContents = env.getContents('test.js');
+
+        expect(jsContents)
+            .not.toContain(
+                'MainService.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+      });
+
+      it('should include injector types with all possible import styles into ng module factory', () => {
+        env.write('test.ts', `
+          import {SomeService1} from './some-where1'
+          import SomeService2 from './some-where2'
+          import * as SomeWhere3 from './some-where3'
+
+          @NgModule({
+          })
+          export class MainModule {         
+            constructor(
+              private someService1: SomeService1,
+              private someService2: SomeService2,
+              private someService3: SomeWhere3.SomeService3,
+              ) {}  
+          }
+          `);
+
+        env.driveMain();
+        const jsContents = env.getContents('test.js');
+
+        expect(jsContents)
+            .not.toContain(
+                'MainModule.ɵfac = function Main_Factory(t) { return new (t || Main)(i0.ɵɵdirectiveInject(SomeService1), i0.ɵɵdirectiveInject(SomeService2), i0.ɵɵdirectiveInject(SomeWhere3.SomeService3)); };');
+      });
+    });
   });
 });
